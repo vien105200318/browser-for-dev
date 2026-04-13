@@ -1,0 +1,49 @@
+# =========================
+# 1. Node.js & Frontend (Svelte/Vite)
+# =========================
+node_modules/
+dist/
+build/
+.svelte-kit/
+
+# Môi trường (Không bao giờ push key bảo mật lên Git)
+.env
+.env.local
+.env.*.local
+
+# File log lỗi của NPM/Yarn/PNPM
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# 2. Rust & Tauri (Backend)
+# =========================
+# Bỏ qua thư mục build siêu nặng của Rust
+src-tauri/target/
+
+# Các file backup tự động của Cargo
+**/*.rs.bk
+
+# =========================
+# 3. Hệ điều hành & Editor
+# =========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VS Code / IntelliJ / Cursor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
