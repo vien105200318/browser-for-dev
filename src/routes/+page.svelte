@@ -1,156 +1,127 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { Webview } from '@tauri-apps/api/webview';
+  import { getCurrentWindow } from '@tauri-apps/api/window';
 
-  let name = $state("");
-  let greetMsg = $state("");
+  let url = "https://google.com";
+  let isLoading = false;
+  let errorMessage = "";
 
-  async function greet(event: Event) {
-    event.preventDefault();
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    greetMsg = await invoke("greet", { name });
+  let mobileContainer: HTMLDivElement;
+  let desktopContainer: HTMLDivElement;
+
+  let mobileWebview: Webview | null = null;
+  let desktopWebview: Webview | null = null;
+
+  async function loadWeb() {
+    if (!url.startsWith("http")) url = "https://" + url;
+    isLoading = true;
+    errorMessage = "";
+
+    const appWindow = getCurrentWindow();
+
+    // Dọn dẹp cửa sổ cũ (Bọc try-catch chống crash)
+    if (mobileWebview) {
+      try { await mobileWebview.close(); } catch (e) { console.log("Mobile cũ đã bay màu."); }
+    }
+    if (desktopWebview) {
+      try { await desktopWebview.close(); } catch (e) { console.log("Desktop cũ đã bay màu."); }
+    }
+
+    try {
+      const mRect = mobileContainer.getBoundingClientRect();
+      const dRect = desktopContainer.getBoundingClientRect();
+
+      // Dùng Date.now() để tên window luôn là duy nhất
+      const timeId = Date.now();
+      const mLabel = `mobile-${timeId}`;
+      const dLabel = `desktop-${timeId}`;
+
+      // Triệu hồi Native Webview Cửa sổ con
+      mobileWebview = new Webview(appWindow, mLabel, {
+        url: url,
+        x: Math.round(mRect.left),
+        y: Math.round(mRect.top),
+        width: Math.round(mRect.width),
+        height: Math.round(mRect.height)
+      });
+
+      desktopWebview = new Webview(appWindow, dLabel, {
+        url: url,
+        x: Math.round(dRect.left),
+        y: Math.round(dRect.top),
+        width: Math.round(dRect.width),
+        height: Math.round(dRect.height)
+      });
+
+    } catch (error) {
+      console.error(error);
+      errorMessage = String(error);
+    }
+    
+    isLoading = false;
   }
 </script>
 
-<main class="container">
-  <h1>Welcome to Tauri + Svelte</h1>
+<main class="h-screen w-screen flex flex-col bg-gray-900 text-white overflow-hidden relative">
+  <div class="h-14 bg-gray-800 flex items-center px-4 gap-4 border-b border-gray-700 shadow-md z-10 relative">
+    <div class="font-bold text-xl bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+      DevBrowse
+    </div>
+    
+    <div class="flex-1 flex max-w-3xl relative">
+      <input 
+        type="text" 
+        bind:value={url} 
+        on:keydown={(e) => e.key === 'Enter' && loadWeb()}
+        class="w-full bg-gray-900 border border-gray-600 px-4 py-1.5 rounded-md text-sm outline-none focus:border-blue-500 transition"
+        placeholder="Nhập URL (VD: google.com) và ấn Enter..."
+      />
+    </div>
 
-  <div class="row">
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo vite" alt="Vite Logo" />
-    </a>
-    <a href="https://tauri.app" target="_blank">
-      <img src="/tauri.svg" class="logo tauri" alt="Tauri Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank">
-      <img src="/svelte.svg" class="logo svelte-kit" alt="SvelteKit Logo" />
-    </a>
+    <button 
+      on:click={loadWeb} 
+      disabled={isLoading}
+      class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 px-6 py-1.5 rounded-md font-medium transition"
+    >
+      {isLoading ? "Đang xử lý..." : "Duyệt"}
+    </button>
   </div>
-  <p>Click on the Tauri, Vite, and SvelteKit logos to learn more.</p>
 
-  <form class="row" onsubmit={greet}>
-    <input id="greet-input" placeholder="Enter a name..." bind:value={name} />
-    <button type="submit">Greet</button>
-  </form>
-  <p>{greetMsg}</p>
+  {#if errorMessage}
+    <div class="bg-red-500 text-white px-4 py-2 text-center text-sm z-20 relative">
+      LỖI: {errorMessage}
+    </div>
+  {/if}
+
+  <div class="flex-1 p-6 flex gap-8 overflow-auto bg-gray-950 items-start justify-center relative">
+    
+    <div class="flex flex-col items-center gap-3 shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-semibold text-gray-300">iPhone 14 Pro</span>
+      </div>
+      <div 
+        bind:this={mobileContainer}
+        class="w-[393px] h-[852px] bg-transparent rounded-3xl border-[12px] border-gray-800 shadow-2xl relative overflow-hidden"
+      >
+        <div class="absolute inset-0 flex items-center justify-center text-gray-600 text-center px-4 -z-10">
+          Đang tải Webview...
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col items-center gap-3 shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-semibold text-gray-300">iPad Mini</span>
+      </div>
+      <div 
+        bind:this={desktopContainer}
+        class="w-[768px] h-[1024px] bg-transparent rounded-2xl border-[12px] border-gray-800 shadow-2xl relative overflow-hidden"
+      >
+        <div class="absolute inset-0 flex items-center justify-center text-gray-600 text-center px-4 -z-10">
+          Đang tải Webview...
+        </div>
+      </div>
+    </div>
+
+  </div>
 </main>
-
-<style>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.svelte-kit:hover {
-  filter: drop-shadow(0 0 2em #ff3e00);
-}
-
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
-</style>
